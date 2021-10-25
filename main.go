@@ -43,6 +43,11 @@ type Topping struct {
 	Topping          string `json:"topping" bson:"topping"`
 }
 
+type Dailytopping struct {
+	mgm.DefaultModel `bson:",inline"`
+	Toppings         string `json:"toppings" bson:"toppings"`
+}
+
 // Function for fetching all toppings from database
 func GetAllToppings() ([]Topping, error) {
 	result := []Topping{}
@@ -77,17 +82,20 @@ func getNextTickDuration() time.Duration {
 }
 
 func NewJobTicker() jobTicker {
-	fmt.Println("new tick here")
+	log.Printf("Started new tick")
 	return jobTicker{time.NewTimer(getNextTickDuration())}
 }
 
 func (jt jobTicker) updateJobTicker() {
-	fmt.Println("next tick here")
+	log.Printf("Started next tick")
 	jt.t.Reset(getNextTickDuration())
 }
 
 // Main function to use previously created timer
 func main() {
+	log.Printf("Wokin Pizza Twitter Bot started")
+	log.Printf("Sending tweet every day at %v:%v:%v", HOUR_TO_TICK, MINUTE_TO_TICK, SECOND_TO_TICK)
+
 	config := oauth1.NewConfig(os.Getenv("API_KEY"), os.Getenv("API_SECRET"))
 	token := oauth1.NewToken(os.Getenv("ACCESS_TOKEN"), os.Getenv("ACCESS_SECRET"))
 	httpClient := config.Client(oauth1.NoContext, token)
@@ -95,25 +103,50 @@ func main() {
 	client := twitter.NewClient(httpClient)
 
 	rand.Seed(time.Now().UnixNano())
-	tweetData := getTweetData()
-
-	tweet, resp, err := client.Statuses.Update(tweetData, nil)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-
-	log.Println(fmt.Sprintf("Tweet (%v) created with status code %v!", tweet.ID, resp.StatusCode))
 
 	jt := NewJobTicker()
 	for {
 		<-jt.t.C
-		fmt.Println(time.Now(), "- just ticked")
+
+		prefix, toppings, suffix := getTweetData()
+
+		tweet, resp, err := client.Statuses.Update(fmt.Sprintf("%v %v %v", prefix, toppings, suffix), nil)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		log.Println(fmt.Sprintf("Tweet (%v) created with status code %v!", tweet.ID, resp.StatusCode))
+
+		updateDailyToppings(toppings)
+
+		// fmt.Println(time.Now(), "- just ticked")
+
 		jt.updateJobTicker()
 	}
 }
 
+func updateDailyToppings(t string) {
+	toppings := &Dailytopping{}
+	coll := mgm.Coll(toppings)
+
+	err := coll.First(bson.M{}, toppings)
+	if err != nil {
+		log.Printf("Failed to fetch daily toppings")
+		return
+	}
+
+	toppings.Toppings = t
+	err2 := mgm.Coll(toppings).Update(toppings)
+	if err2 != nil {
+		log.Printf("Failed to update daily toppings")
+		return
+	}
+
+	log.Printf("Updated daily toppings to %v", t)
+}
+
 // Get tweet data function
-func getTweetData() string {
+func getTweetData() (string, string, string) {
 	toppings, err := GetAllToppings()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -157,5 +190,6 @@ func getTweetData() string {
 
 	message := messages[rand.Intn(len(messages))]
 
-	return fmt.Sprintf("%s %s %s", message.Prefix, strings.Join(selectedToppings[:], ", "), message.Suffix)
+	return message.Prefix, strings.Join(selectedToppings[:], ", "), message.Suffix
+	// return fmt.Sprintf("%s %s %s", message.Prefix, strings.Join(selectedToppings[:], ", "), message.Suffix)
 }
