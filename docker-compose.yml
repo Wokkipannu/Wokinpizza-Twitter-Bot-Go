@@ -1,0 +1,7 @@
+services:
+  pizzabot:
+    image: wokkipannu/wokinpizza-twitter-bot-go:latest
+    container_name: twitterbot
+    restart: always
+    volumes:
+      - /opt/Twitterbot/.env:/twitterbot/.env
