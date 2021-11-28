@@ -137,7 +137,7 @@ func updateDailyToppings(t string) {
 
 // Get tweet data function
 func getTweetData() (string, string, string) {
-	res, err := http.Get("http://peepo.land:38423/api/random")
+	res, err := http.Get(os.Getenv("API_URL") + "/random")
 	if err != nil {
 		log.Print(err)
 		return "", "", ""
