@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/dghubble/go-twitter/twitter"
@@ -37,28 +39,16 @@ type Message struct {
 	Suffix string
 }
 
-// Define topping structure for mongodb
-type Topping struct {
-	mgm.DefaultModel `bson:",inline"`
-	Topping          string `json:"topping" bson:"topping"`
-}
-
+// Define Dailytopping structure for mongodb
 type Dailytopping struct {
 	mgm.DefaultModel `bson:",inline"`
 	Toppings         string `json:"toppings" bson:"toppings"`
 }
 
-// Function for fetching all toppings from database
-func GetAllToppings() ([]Topping, error) {
-	result := []Topping{}
-
-	err := mgm.Coll(&Topping{}).SimpleFind(&result, bson.D{})
-	if err != nil {
-		log.Printf("Error finding toppings")
-		return result, err
-	}
-
-	return result, nil
+type ToppingsResponse struct {
+	Data    string `json:"data"`
+	Message string `json:"message"`
+	Status  string `json:"status"`
 }
 
 // Timer for sending toppings to twitter every day at 10AM
@@ -147,12 +137,23 @@ func updateDailyToppings(t string) {
 
 // Get tweet data function
 func getTweetData() (string, string, string) {
-	toppings, err := GetAllToppings()
+	res, err := http.Get("http://peepo.land:38423/api/random")
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Print(err)
+		return "", "", ""
 	}
-
-	var selectedToppings []string
+	defer res.Body.Close()
+	body, readErr := ioutil.ReadAll(res.Body)
+	if readErr != nil {
+		log.Print(readErr)
+		return "", "", ""
+	}
+	toppings := ToppingsResponse{}
+	jsonErr := json.Unmarshal(body, &toppings)
+	if jsonErr != nil {
+		log.Print(jsonErr)
+		return "", "", ""
+	}
 
 	// Defining messages like this for now, later on should probably move on
 	// to a database or file so we can change these on the fly without having
@@ -184,12 +185,8 @@ func getTweetData() (string, string, string) {
 		},
 	}
 
-	for i := 0; i < 4; i++ {
-		selectedToppings = append(selectedToppings, toppings[rand.Intn(len(toppings))].Topping)
-	}
-
 	message := messages[rand.Intn(len(messages))]
 
-	return message.Prefix, strings.Join(selectedToppings[:], ", "), message.Suffix
+	return message.Prefix, toppings.Data, message.Suffix
 	// return fmt.Sprintf("%s %s %s", message.Prefix, strings.Join(selectedToppings[:], ", "), message.Suffix)
 }
