@@ -8,6 +8,6 @@ RUN go mod download
 
 COPY *.go ./
 
-RUN go build -o /bot
+RUN go build -o ./bot
 
 CMD [ "./bot" ]
