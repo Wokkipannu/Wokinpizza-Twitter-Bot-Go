@@ -18,25 +18,41 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var Messages = []Message{}
+
 // Initialize everything
-// Load dotenv or log fatal if we fail to load it
-// Connect to the MongoDB
 func init() {
+	// Load dotenv or log fatal if we fail to load it
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+	fmt.Println("Loaded .env file")
 
+	// Connect to the MongoDB
 	err2 := mgm.SetDefaultConfig(nil, os.Getenv("DB"), options.Client().ApplyURI(fmt.Sprintf("mongodb://%v", os.Getenv("MONGO_URI"))))
 	if err2 != nil {
 		log.Fatal(err2)
 	}
+	fmt.Println("Connected to MongoDB")
+
+	// Load the messages
+	messageFile, err3 := os.Open("message.json")
+	if err3 != nil {
+		log.Fatal(err3)
+	}
+	fmt.Println("Successfully Opened message.json")
+	defer messageFile.Close()
+
+	jsonParser := json.NewDecoder(messageFile)
+	jsonParser.Decode(&Messages)
+	fmt.Println("Successfully Parsed message.json")
 }
 
 // Define the message structure for sending tweets with prefix and suffix
 type Message struct {
-	Prefix string
-	Suffix string
+	Prefix string `json:"prefix"`
+	Suffix string `json:"suffix"`
 }
 
 // Define Dailytopping structure for mongodb
@@ -109,8 +125,6 @@ func main() {
 
 		updateDailyToppings(toppings)
 
-		// fmt.Println(time.Now(), "- just ticked")
-
 		jt.updateJobTicker()
 	}
 }
@@ -155,38 +169,7 @@ func getTweetData() (string, string, string) {
 		return "", "", ""
 	}
 
-	// Defining messages like this for now, later on should probably move on
-	// to a database or file so we can change these on the fly without having
-	// to change these in the code and restarting the bot
-	messages := []Message{
-		{
-			Prefix: "Kokeile tän päivän komboa 👉",
-			Suffix: "🍕",
-		},
-		{
-			Prefix: "Et varmaan uskalla kokeilla 🤏",
-			Suffix: "💪",
-		},
-		{
-			Prefix: "Tästä herkulliset täytteet sun pizzaan 🤜",
-			Suffix: "🤛",
-		},
-		{
-			Prefix: "Ihan ok, mut ootko kuullut",
-			Suffix: "pizzasta? 🙌",
-		},
-		{
-			Prefix: "Nälättääkö? No kokeiles tämmöstä lättyä:",
-			Suffix: "🤙",
-		},
-		{
-			Prefix: "Penanaattori suosittelee näitä täytteitä:",
-			Suffix: "🍕",
-		},
-	}
-
-	message := messages[rand.Intn(len(messages))]
+	message := Messages[rand.Intn(len(Messages))]
 
 	return message.Prefix, toppings.Data, message.Suffix
-	// return fmt.Sprintf("%s %s %s", message.Prefix, strings.Join(selectedToppings[:], ", "), message.Suffix)
 }
