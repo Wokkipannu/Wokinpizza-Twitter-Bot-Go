@@ -5,3 +5,4 @@ services:
     restart: always
     volumes:
       - /opt/Twitterbot/.env:/twitterbot/.env
+      - /opt/Twitterbot/message.json:/twitterbot/message.json

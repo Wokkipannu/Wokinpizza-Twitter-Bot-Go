@@ -37,7 +37,7 @@ func init() {
 	fmt.Println("Connected to MongoDB")
 
 	// Load the messages
-	messageFile, err3 := os.Open("message.json")
+	messageFile, err3 := os.Open(os.Getenv("PATH") + "message.json")
 	if err3 != nil {
 		log.Fatal(err3)
 	}
@@ -46,7 +46,7 @@ func init() {
 
 	jsonParser := json.NewDecoder(messageFile)
 	jsonParser.Decode(&Messages)
-	fmt.Println("Successfully Parsed message.json")
+	fmt.Printf("Successfully Parsed message.json and %v messages\n", len(Messages))
 }
 
 // Define the message structure for sending tweets with prefix and suffix
