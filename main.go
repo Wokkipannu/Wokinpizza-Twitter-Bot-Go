@@ -37,7 +37,7 @@ func init() {
 	fmt.Println("Connected to MongoDB")
 
 	// Load the messages
-	messageFile, err3 := os.Open(os.Getenv("PATH") + "message.json")
+	messageFile, err3 := os.Open("/twitterbot/message.json")
 	if err3 != nil {
 		log.Fatal(err3)
 	}
