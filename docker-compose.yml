@@ -6,3 +6,4 @@ services:
     volumes:
       - /opt/Twitterbot/.env:/twitterbot/.env
       - /opt/Twitterbot/message.json:/twitterbot/message.json
+      - "/etc/localtime:/etc/localtime:ro"
